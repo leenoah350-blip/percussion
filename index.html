@@ -1,97 +1,177 @@
+
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Webcam Percussion Keyboard (Blanket + Tape)</title>
+  <title>Webcam Tape Keyboard — White/Black Row Layout</title>
   <style>
     :root { color-scheme: dark; }
-    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#0b0d12; color:#e8e8e8; }
-    header { padding: 14px 16px; border-bottom: 1px solid #222; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-    header h1 { font-size: 16px; margin: 0; font-weight: 650; }
-    .wrap { display:grid; grid-template-columns: 1.3fr 0.7fr; gap: 12px; padding: 12px; }
-    .panel { background:#111522; border:1px solid #1f2536; border-radius:12px; overflow:hidden; }
-    .panel .hd { padding:10px 12px; border-bottom:1px solid #1f2536; font-weight:650; font-size:13px; color:#cfd6ff; }
-    .panel .bd { padding:12px; }
-    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    label { font-size:12px; color:#c9c9c9; display:flex; gap:8px; align-items:center; }
-    input[type="range"] { width: 200px; }
-    input[type="number"] { width:80px; padding:6px 8px; border-radius:10px; border:1px solid #2a3350; background:#0c1020; color:#e8e8e8;}
-    button {
-      padding:10px 12px; border-radius:12px; border:1px solid #2a3350; background:#141a2d; color:#e8e8e8;
-      cursor:pointer; font-weight:650;
-    }
-    button:hover { background:#182041; }
-    button.danger { border-color:#5a2a2a; background:#2a1414; }
-    button.danger:hover { background:#3a1818; }
+    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:#0b0d12; color:#e8e8e8; }
+    header{ padding:14px 16px; border-bottom:1px solid #222; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    header h1{ font-size:15px; margin:0; font-weight:800; letter-spacing:.2px; }
+    .pill{ display:inline-block; padding:2px 10px; border:1px solid #2a3350; border-radius:999px; font-size:12px; color:#cfd6ff; }
 
-    .stage { position: relative; background:#000; }
-    canvas { width:100%; height:auto; display:block; background:#000; }
-    .hint { font-size:12px; line-height:1.35; color:#b6b6b6; }
-    .pill { display:inline-block; padding:2px 8px; border:1px solid #2a3350; border-radius:999px; font-size:12px; color:#cfd6ff; }
-    .grid { display:grid; gap:10px; }
-    .klog { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px; max-height:200px; overflow:auto; padding:10px; background:#0a0e1a; border:1px solid #1f2536; border-radius:12px; }
-    .small { font-size:12px; color:#bdbdbd; }
+    .wrap{ display:grid; grid-template-columns:1.25fr .75fr; gap:12px; padding:12px; }
+    .panel{ background:#111522; border:1px solid #1f2536; border-radius:12px; overflow:hidden; }
+    .panel .hd{ padding:10px 12px; border-bottom:1px solid #1f2536; font-weight:800; font-size:13px; color:#cfd6ff; }
+    .panel .bd{ padding:12px; }
+
+    .stage{ position:relative; background:#000; }
+    canvas{ width:100%; height:auto; display:block; background:#000; touch-action:none; }
+
+    .overlay{
+      position:absolute; inset:0; pointer-events:none;
+      display:flex; align-items:flex-start; justify-content:center;
+      padding:14px;
+    }
+    .overlayCard{
+      max-width: 820px;
+      width: calc(100% - 18px);
+      border:1px solid #2a3350;
+      background: rgba(12,16,32,.78);
+      backdrop-filter: blur(8px);
+      border-radius: 14px;
+      padding: 12px 14px;
+      box-shadow: 0 12px 30px rgba(0,0,0,.35);
+    }
+    .overlayTitle{ font-weight:900; font-size:14px; margin:0 0 6px 0; color:#eaf0ff; }
+    .overlayBody{ font-size:13px; margin:0; color:#d6dcff; line-height:1.35; }
+    .overlayBody b{ color:#fff; }
+
+    .overlayDone{
+      position:absolute; inset:0; display:none;
+      align-items:center; justify-content:center;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(6px);
+    }
+    .doneCard{
+      border:1px solid #2a5bd9;
+      background: rgba(20,48,90,.88);
+      border-radius: 18px;
+      padding: 18px 20px;
+      text-align:center;
+      max-width: 560px;
+      margin: 18px;
+      box-shadow: 0 12px 30px rgba(0,0,0,.35);
+    }
+    .doneCard h2{ margin:0 0 6px 0; font-size:18px; font-weight:900; }
+    .doneCard p{ margin:0; color:#eaf0ff; font-size:13px; line-height:1.35; }
+
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    label{ font-size:12px; color:#c9c9c9; display:flex; gap:8px; align-items:center; }
+    input[type="range"]{ width: 220px; }
+    input[type="number"]{
+      width:96px; padding:6px 8px; border-radius:10px;
+      border:1px solid #2a3350; background:#0c1020; color:#e8e8e8;
+    }
+    button{
+      padding:10px 12px; border-radius:12px; border:1px solid #2a3350;
+      background:#141a2d; color:#e8e8e8; cursor:pointer; font-weight:900;
+    }
+    button:hover{ background:#182041; }
+    button.primary{ border-color:#2a5bd9; background:#14305a; }
+    button.primary:hover{ background:#163a72; }
+    button.danger{ border-color:#5a2a2a; background:#2a1414; }
+    button.danger:hover{ background:#3a1818; }
+
+    .hint{ font-size:12px; line-height:1.35; color:#b6b6b6; }
+    .small{ font-size:12px; color:#bdbdbd; }
+    .klog{
+      font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      font-size:12px; max-height:230px; overflow:auto; padding:10px;
+      background:#0a0e1a; border:1px solid #1f2536; border-radius:12px; white-space:pre-wrap;
+    }
   </style>
 </head>
 <body>
 <header>
-  <h1>Webcam Percussion Keyboard (Blanket + Tape)</h1>
+  <h1>Webcam Tape Keyboard — White/Black Row Layout</h1>
   <span class="pill" id="statusPill">idle</span>
 </header>
 
 <div class="wrap">
   <div class="panel stage">
     <canvas id="view" width="960" height="540"></canvas>
+
+    <div class="overlay">
+      <div class="overlayCard">
+        <p class="overlayTitle" id="overlayTitle">1) Start the camera</p>
+        <p class="overlayBody" id="overlayBody">
+          Tap <b>Start Camera</b>, allow permission, then tap <b>Begin Calibration</b>.
+        </p>
+      </div>
+    </div>
+
+    <div class="overlayDone" id="overlayDone">
+      <div class="doneCard">
+        <h2>✅ CALIBRATION COMPLETE</h2>
+        <p>
+          Bottom row = <b>naturals (white keys)</b>. Top row = <b>sharps/flats (black keys)</b>.<br/>
+          If it false-triggers, raise <b>Sensitivity</b> or increase <b>Debounce</b>.
+        </p>
+      </div>
+    </div>
   </div>
 
   <div class="panel">
     <div class="hd">Controls</div>
-    <div class="bd grid">
+    <div class="bd" style="display:grid; gap:12px;">
       <div class="row">
-        <button id="startBtn">Start Camera</button>
-        <button id="calibBtn">Calibrate (4 clicks)</button>
-        <button id="clearBtn" class="danger">Clear Calib</button>
+        <button id="startBtn" class="primary">Start Camera</button>
+        <button id="beginCalibBtn">Begin Calibration</button>
+        <button id="resetBtn" class="danger">Reset</button>
       </div>
 
       <div class="row">
-        <label>Keys
-          <input id="keys" type="number" min="2" max="24" value="8" />
+        <button id="testSoundBtn">Test Sound (F3)</button>
+        <span class="small">Confirms audio works.</span>
+      </div>
+
+      <div class="row">
+        <label>Range start (Base MIDI)
+          <input id="baseMidi" type="number" min="0" max="127" value="53" />
         </label>
-        <label>Base MIDI
-          <input id="baseMidi" type="number" min="0" max="127" value="60" />
+        <label>Range end (Top MIDI)
+          <input id="topMidi" type="number" min="0" max="127" value="89" />
         </label>
       </div>
 
       <div class="row">
-        <label>Motion threshold
-          <input id="threshold" type="range" min="5" max="80" value="22" />
-          <span id="thresholdVal" class="small">22</span>
+        <label>Row split (black keys height)
+          <input id="rowSplit" type="range" min="0.25" max="0.60" step="0.01" value="0.42" />
+          <span id="rowSplitVal" class="small">0.42</span>
+        </label>
+      </div>
+
+      <div class="row">
+        <label>Sensitivity
+          <input id="sensitivity" type="range" min="0.6" max="2.0" step="0.05" value="1.00" />
+          <span id="sensVal" class="small">1.00</span>
         </label>
       </div>
 
       <div class="row">
         <label>Debounce (ms)
-          <input id="debounce" type="number" min="30" max="1000" value="160" />
+          <input id="debounce" type="number" min="30" max="1200" value="160" />
         </label>
-        <label>Velocity
-          <input id="velocity" type="range" min="0" max="1" step="0.01" value="0.8" />
-          <span id="velVal" class="small">0.80</span>
-        </label>
-      </div>
-
-      <div class="row">
         <label>Gate (ms)
           <input id="gate" type="number" min="20" max="2000" value="140" />
         </label>
       </div>
 
+      <div class="row">
+        <label>Velocity
+          <input id="velocity" type="range" min="0" max="1" step="0.01" value="0.80" />
+          <span id="velVal" class="small">0.80</span>
+        </label>
+      </div>
+
       <div class="hint">
-        <b>Setup tips:</b><br/>
-        • Put the camera above, angled down. Keep the blanket area well-lit.<br/>
-        • Calibrate by clicking the 4 corners of your taped “keyboard”.<br/>
-        • Motion threshold: raise it if it triggers randomly; lower it if misses hits.<br/>
-        • Works best when your sticks/hands are the moving thing.
+        <b>Important (your layout):</b><br/>
+        • Bottom row triggers <b>natural notes</b> only.<br/>
+        • Top row triggers <b>sharps/flats</b> only.<br/>
+        • Use <b>Row split</b> so the top band covers your “black key” tape row.
       </div>
 
       <div>
@@ -110,28 +190,48 @@
 
   const statusPill = document.getElementById('statusPill');
   const startBtn = document.getElementById('startBtn');
-  const calibBtn = document.getElementById('calibBtn');
-  const clearBtn = document.getElementById('clearBtn');
+  const beginCalibBtn = document.getElementById('beginCalibBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const testSoundBtn = document.getElementById('testSoundBtn');
 
-  const keysEl = document.getElementById('keys');
   const baseMidiEl = document.getElementById('baseMidi');
-  const thresholdEl = document.getElementById('threshold');
-  const thresholdVal = document.getElementById('thresholdVal');
+  const topMidiEl = document.getElementById('topMidi');
+  const rowSplitEl = document.getElementById('rowSplit');
+  const rowSplitVal = document.getElementById('rowSplitVal');
+  const sensitivityEl = document.getElementById('sensitivity');
+  const sensVal = document.getElementById('sensVal');
   const debounceEl = document.getElementById('debounce');
+  const gateEl = document.getElementById('gate');
   const velocityEl = document.getElementById('velocity');
   const velVal = document.getElementById('velVal');
-  const gateEl = document.getElementById('gate');
   const logEl = document.getElementById('log');
 
-  thresholdEl.addEventListener('input', () => thresholdVal.textContent = thresholdEl.value);
+  const overlayTitle = document.getElementById('overlayTitle');
+  const overlayBody = document.getElementById('overlayBody');
+  const overlayDone = document.getElementById('overlayDone');
+
+  rowSplitEl.addEventListener('input', () => rowSplitVal.textContent = (+rowSplitEl.value).toFixed(2));
+  sensitivityEl.addEventListener('input', () => sensVal.textContent = (+sensitivityEl.value).toFixed(2));
   velocityEl.addEventListener('input', () => velVal.textContent = (+velocityEl.value).toFixed(2));
 
   function log(msg) {
     const t = new Date().toLocaleTimeString();
     logEl.textContent = `[${t}] ${msg}\n` + logEl.textContent;
   }
-
   function setStatus(s) { statusPill.textContent = s; }
+  function clampInt(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  // ---------- NOTE NAMES ----------
+  const NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+  function midiToNoteName(midi) {
+    const name = NOTE_NAMES[midi % 12];
+    const octave = Math.floor(midi / 12) - 1;
+    return `${name}${octave}`;
+  }
+  function isBlackMidi(midi) {
+    const pc = midi % 12;
+    return pc === 1 || pc === 3 || pc === 6 || pc === 8 || pc === 10; // C#,D#,F#,G#,A#
+  }
 
   // ---------- VIDEO ----------
   const video = document.createElement('video');
@@ -141,62 +241,20 @@
   let stream = null;
   let running = false;
 
-  // ---------- CALIBRATION (4 points) ----------
-  // Points in canvas coords: [top-left, top-right, bottom-right, bottom-left]
-  let calibPoints = [];
-  let calibrating = false;
-
-  calibBtn.addEventListener('click', () => {
-    if (!running) return log('Start camera first.');
-    calibPoints = [];
-    calibrating = true;
-    log('Calibration: click 4 corners (TL, TR, BR, BL).');
-    setStatus('calibrating');
-  });
-
-  clearBtn.addEventListener('click', () => {
-    calibPoints = [];
-    calibrating = false;
-    log('Calibration cleared.');
-    setStatus(running ? 'running' : 'idle');
-  });
-
-  canvas.addEventListener('click', (e) => {
-    if (!calibrating) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-    calibPoints.push({x, y});
-    log(`Point ${calibPoints.length}: (${x.toFixed(0)}, ${y.toFixed(0)})`);
-    if (calibPoints.length === 4) {
-      calibrating = false;
-      log('Calibration complete.');
-      setStatus('running');
-      // Reset motion history when we calibrate
-      prevWarp = null;
-      lastHitTimes.fill(0);
-    }
-  });
-
-  // ---------- AUDIO (simple synth) ----------
+  // ---------- AUDIO ----------
   let audioCtx = null;
-
-  function midiToFreq(m) {
-    return 440 * Math.pow(2, (m - 69) / 12);
-  }
-
   function ensureAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
   }
-
+  function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
   function playNote(midi, vel=0.8, gateMs=140) {
     ensureAudio();
     const now = audioCtx.currentTime;
+
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
 
-    // "Percussy" tone: triangle with quick decay
     osc.type = 'triangle';
     osc.frequency.value = midiToFreq(midi);
 
@@ -212,18 +270,208 @@
     osc.stop(now + d + 0.05);
   }
 
+  testSoundBtn.addEventListener('click', () => {
+    playNote(53, 0.9, 200); // F3
+    log('Test sound: F3');
+  });
+
+  // ---------- CALIBRATION MODES ----------
+  // modes: idle | corners | notes | play
+  let mode = 'idle';
+
+  // 4 corners on canvas: TL, TR, BR, BL
+  let cornerPoints = [];
+  let keys = []; // ordered semitone keys (objects with midi, name, isBlack, xCenterNorm)
+  let keyThresholds = []; // per-key motion threshold
+
+  let currentKeyIndex = 0;
+
+  // guided capture
+  let noteCaptureStart = 0;
+  const NOTE_CAPTURE_MS = 1200;
+  const BASELINE_MS = 300;
+  let peakDuringCapture = 0;
+  let baselineAccum = 0;
+  let baselineCount = 0;
+
+  // debounce
+  let lastHitTimes = new Array(128).fill(0);
+
+  function buildKeys() {
+    const baseMidi = clampInt(+baseMidiEl.value|0, 0, 127);
+    const topMidi  = clampInt(+topMidiEl.value|0, 0, 127);
+    const lo = Math.min(baseMidi, topMidi);
+    const hi = Math.max(baseMidi, topMidi);
+
+    // Build list of keys in semitone order
+    const list = [];
+    for (let m = lo; m <= hi; m++) {
+      list.push({
+        midi: m,
+        name: midiToNoteName(m),
+        isBlack: isBlackMidi(m),
+        xCenter: 0.5 // placeholder
+      });
+    }
+
+    // Compute x-centers like a real keyboard:
+    // Whites are evenly spaced. Blacks sit between adjacent whites.
+    const whites = list.filter(k => !k.isBlack);
+
+    // Map midi -> whiteIndex for whites
+    const whiteIndexByMidi = new Map();
+    whites.forEach((k, i) => whiteIndexByMidi.set(k.midi, i));
+
+    const whiteCount = whites.length;
+    if (whiteCount < 2) return { keys: list, whiteCount: Math.max(1, whiteCount) };
+
+    // Assign xCenter for each key
+    for (const k of list) {
+      if (!k.isBlack) {
+        const wi = whiteIndexByMidi.get(k.midi);
+        k.xCenter = (wi + 0.5) / whiteCount;
+      } else {
+        // Black key: place it between nearest surrounding whites
+        // Search down for prev white, up for next white
+        let prev = k.midi - 1;
+        while (prev >= lo && isBlackMidi(prev)) prev--;
+        let next = k.midi + 1;
+        while (next <= hi && isBlackMidi(next)) next++;
+
+        const wiPrev = whiteIndexByMidi.get(prev);
+        const wiNext = whiteIndexByMidi.get(next);
+
+        if (wiPrev != null && wiNext != null) {
+          k.xCenter = ((wiPrev + 0.5) + (wiNext + 0.5)) / 2 / whiteCount;
+        } else if (wiPrev != null) {
+          k.xCenter = (wiPrev + 0.8) / whiteCount;
+        } else if (wiNext != null) {
+          k.xCenter = (wiNext + 0.2) / whiteCount;
+        } else {
+          k.xCenter = 0.5;
+        }
+      }
+    }
+
+    return { keys: list, whiteCount };
+  }
+
+  function setOverlay() {
+    overlayDone.style.display = 'none';
+
+    if (!running) {
+      mode = 'idle';
+      overlayTitle.textContent = '1) Start the camera';
+      overlayBody.innerHTML = 'Tap <b>Start Camera</b>, allow permission, then tap <b>Begin Calibration</b>.';
+      return;
+    }
+
+    if (mode === 'idle') {
+      overlayTitle.textContent = '2) Begin calibration';
+      overlayBody.innerHTML = 'Tap <b>Begin Calibration</b> to mark the 4 corners of your keyboard area.';
+      return;
+    }
+
+    if (mode === 'corners') {
+      const next = cornerPoints.length + 1;
+      const cornerName = ['Top-Left','Top-Right','Bottom-Right','Bottom-Left'][cornerPoints.length] || '';
+      overlayTitle.textContent = `Corner ${next}: Tap ${cornerName}`;
+      overlayBody.innerHTML = `Tap the <b>${cornerName}</b> corner on the video.<br/>This sets the keyboard region.`;
+      return;
+    }
+
+    if (mode === 'notes') {
+      const k = keys[currentKeyIndex];
+      overlayTitle.textContent = `Play ${k.name}`;
+      overlayBody.innerHTML =
+        `Hit <b>${k.name}</b> on the correct row:<br/>` +
+        `${k.isBlack ? 'Top row = <b>sharps/flats</b> (black keys).' : 'Bottom row = <b>naturals</b> (white keys).'}<br/>` +
+        `Progress: <b>${currentKeyIndex + 1}/${keys.length}</b>`;
+      return;
+    }
+
+    if (mode === 'play') {
+      overlayTitle.textContent = 'Play mode';
+      overlayBody.innerHTML =
+        `Bottom row triggers <b>naturals</b>. Top row triggers <b>sharps/flats</b>.<br/>` +
+        `If it false-triggers, raise “<b>Sensitivity</b>” or “<b>Debounce</b>”.`;
+      return;
+    }
+  }
+
+  function resetAll() {
+    mode = 'idle';
+    cornerPoints = [];
+    keys = [];
+    keyThresholds = [];
+    currentKeyIndex = 0;
+    prevWarp = null;
+    overlayDone.style.display = 'none';
+    setStatus(running ? 'running' : 'idle');
+    setOverlay();
+    log('Reset complete.');
+  }
+
+  resetBtn.addEventListener('click', resetAll);
+
+  beginCalibBtn.addEventListener('click', () => {
+    if (!running) { log('Start camera first.'); return; }
+    cornerPoints = [];
+    keys = [];
+    keyThresholds = [];
+    currentKeyIndex = 0;
+    prevWarp = null;
+    mode = 'corners';
+    log('Calibration started: tap 4 corners (TL, TR, BR, BL).');
+    setOverlay();
+  });
+
+  // ---------- TAP HANDLING ----------
+  function getEventXY(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = (e.touches ? e.touches[0].clientX : e.clientX);
+    const clientY = (e.touches ? e.touches[0].clientY : e.clientY);
+    const x = (clientX - rect.left) * (canvas.width / rect.width);
+    const y = (clientY - rect.top) * (canvas.height / rect.height);
+    return {x, y};
+  }
+
+  function handleCanvasTap(e) {
+    if (mode !== 'corners') return;
+    e.preventDefault();
+
+    const {x, y} = getEventXY(e);
+    cornerPoints.push({x, y});
+    log(`Corner ${cornerPoints.length} complete: (${x.toFixed(0)}, ${y.toFixed(0)})`);
+
+    if (cornerPoints.length < 4) {
+      setOverlay();
+      return;
+    }
+
+    // corners done -> build key map + start guided note calibration
+    const built = buildKeys();
+    keys = built.keys;
+    keyThresholds = new Array(keys.length).fill(0);
+
+    mode = 'notes';
+    currentKeyIndex = 0;
+    prevWarp = null;
+    startKeyCaptureWindow();
+    log(`Corners complete. Guided calibration: ${keys[0].name} → ${keys[keys.length-1].name}`);
+    setOverlay();
+  }
+
+  canvas.addEventListener('pointerdown', handleCanvasTap, { passive:false });
+  canvas.addEventListener('touchstart', handleCanvasTap, { passive:false });
+
   // ---------- PERSPECTIVE WARP ----------
-  // We map 4-point quad -> rectangle (warpW x warpH) using a homography.
-  // Lightweight implementation (no libs).
-  const warpW = 320, warpH = 180;
+  const warpW = 360, warpH = 200;
   const warpCanvas = document.createElement('canvas');
   warpCanvas.width = warpW; warpCanvas.height = warpH;
   const wctx = warpCanvas.getContext('2d', { willReadFrequently: true });
 
   function solveHomography(src, dst) {
-    // src, dst: arrays of 4 points {x,y} in order TL,TR,BR,BL
-    // Returns 3x3 homography H mapping src -> dst.
-    // We solve Ah = b (8x8) for h (8 unknowns), set h33 = 1.
     const A = [];
     const b = [];
     for (let i = 0; i < 4; i++) {
@@ -232,10 +480,8 @@
       A.push([x, y, 1, 0, 0, 0, -u*x, -u*y]); b.push(u);
       A.push([0, 0, 0, x, y, 1, -v*x, -v*y]); b.push(v);
     }
-    // Gaussian elimination
     const n = 8;
     for (let i = 0; i < n; i++) {
-      // pivot
       let maxRow = i;
       for (let r = i + 1; r < n; r++) {
         if (Math.abs(A[r][i]) > Math.abs(A[maxRow][i])) maxRow = r;
@@ -254,7 +500,7 @@
         b[r] -= f * b[i];
       }
     }
-    const h = b; // 8 values
+    const h = b;
     return [
       [h[0], h[1], h[2]],
       [h[3], h[4], h[5]],
@@ -292,7 +538,6 @@
   }
 
   function warpQuadToRect(frameCtx, quad) {
-    // Build H that maps src quad -> dst rectangle coords
     const dst = [
       {x:0, y:0},
       {x:warpW-1, y:0},
@@ -300,9 +545,8 @@
       {x:0, y:warpH-1},
     ];
     const H = solveHomography(quad, dst);
-    const Hinv = invert3x3(H); // map dst -> src for sampling
+    const Hinv = invert3x3(H);
 
-    // sample each pixel in rect from source
     const srcImg = frameCtx.getImageData(0, 0, canvas.width, canvas.height);
     const sdata = srcImg.data;
 
@@ -326,18 +570,19 @@
     return out;
   }
 
-  // ---------- MOTION DETECTION ----------
-  let prevWarp = null;
-  let lastHitTimes = new Array(24).fill(0);
-
-  function motionScore(curr, prev, x0, x1) {
-    // Sum absolute luminance difference in a vertical slice [x0,x1)
+  // ---------- MOTION SCORE (now supports y-range) ----------
+  function motionScore(curr, prev, x0, x1, y0, y1) {
     const cd = curr.data, pd = prev.data;
     let sum = 0;
-    const w = warpW, h = warpH;
-    for (let y = 0; y < h; y++) {
+    const w = warpW;
+    const yy0 = Math.max(0, Math.min(warpH, y0|0));
+    const yy1 = Math.max(0, Math.min(warpH, y1|0));
+    const xx0 = Math.max(0, Math.min(warpW, x0|0));
+    const xx1 = Math.max(0, Math.min(warpW, x1|0));
+
+    for (let y = yy0; y < yy1; y++) {
       const row = y * w;
-      for (let x = x0; x < x1; x++) {
+      for (let x = xx0; x < xx1; x++) {
         const idx = (row + x) * 4;
         const cR = cd[idx], cG = cd[idx+1], cB = cd[idx+2];
         const pR = pd[idx], pG = pd[idx+1], pB = pd[idx+2];
@@ -346,92 +591,157 @@
         sum += Math.abs(cY - pY);
       }
     }
-    // normalize
-    const area = (x1 - x0) * h;
-    return sum / Math.max(1, area);
+    const area = Math.max(1, (xx1-xx0) * (yy1-yy0));
+    return sum / area;
   }
 
-  // ---------- DRAW HELPERS ----------
-  function drawCalibOverlay() {
-    if (calibPoints.length === 0) return;
+  // ---------- KEY REGION (white vs black rows) ----------
+  function getKeyRegionPx(keyObj, whiteCount) {
+    // x sizing: whites wider, blacks narrower
+    const whiteW = warpW / Math.max(1, whiteCount);
+    const w = keyObj.isBlack ? whiteW * 0.55 : whiteW * 0.95;
+
+    const xc = keyObj.xCenter * warpW;
+    const x0 = Math.round(xc - w/2);
+    const x1 = Math.round(xc + w/2);
+
+    const split = +rowSplitEl.value; // fraction for black row height
+    const ySplit = Math.round(warpH * split);
+
+    // top band for blacks, bottom for whites
+    const y0 = keyObj.isBlack ? 0 : ySplit;
+    const y1 = keyObj.isBlack ? ySplit : warpH;
+
+    return { x0, x1, y0, y1 };
+  }
+
+  // ---------- GUIDED CAPTURE ----------
+  function startKeyCaptureWindow() {
+    noteCaptureStart = performance.now();
+    peakDuringCapture = 0;
+    baselineAccum = 0;
+    baselineCount = 0;
+  }
+
+  function finishCurrentKeyCapture(defaultFloor=10) {
+    // baseline is average motion early in window
+    const baseline = baselineCount ? (baselineAccum / baselineCount) : 0;
+    const peak = peakDuringCapture;
+
+    // threshold: baseline + fraction of peak delta, with floor
+    // (tuned for "hit-like" motion)
+    const thr = Math.max(defaultFloor, baseline + (peak - baseline) * 0.45);
+
+    keyThresholds[currentKeyIndex] = thr;
+
+    const k = keys[currentKeyIndex];
+    log(`Calibrated ${k.name} (${k.isBlack ? 'black/top' : 'white/bottom'}) threshold=${thr.toFixed(1)}`);
+
+    currentKeyIndex++;
+    if (currentKeyIndex >= keys.length) {
+      mode = 'play';
+      overlayDone.style.display = 'flex';
+      log('✅ Calibration complete. Play mode enabled.');
+      setOverlay();
+      return;
+    }
+    startKeyCaptureWindow();
+    setOverlay();
+  }
+
+  // ---------- DRAW OVERLAY GUIDES ----------
+  function drawCornerOverlay() {
+    if (cornerPoints.length === 0) return;
+
     ctx.save();
     ctx.lineWidth = 3;
-    ctx.strokeStyle = '#7aa2ff';
-    ctx.fillStyle = '#7aa2ff';
+    ctx.strokeStyle = 'rgba(122,162,255,0.9)';
+    ctx.fillStyle = 'rgba(122,162,255,0.95)';
+    ctx.font = '14px system-ui';
 
-    for (let i = 0; i < calibPoints.length; i++) {
-      const p = calibPoints[i];
+    for (let i = 0; i < cornerPoints.length; i++) {
+      const p = cornerPoints[i];
       ctx.beginPath();
       ctx.arc(p.x, p.y, 6, 0, Math.PI*2);
       ctx.fill();
-      ctx.fillText(String(i+1), p.x + 8, p.y - 8);
+      ctx.fillText(String(i+1), p.x + 10, p.y - 10);
     }
-    if (calibPoints.length === 4) {
+    if (cornerPoints.length === 4) {
       ctx.beginPath();
-      ctx.moveTo(calibPoints[0].x, calibPoints[0].y);
-      for (let i=1;i<4;i++) ctx.lineTo(calibPoints[i].x, calibPoints[i].y);
+      ctx.moveTo(cornerPoints[0].x, cornerPoints[0].y);
+      for (let i=1;i<4;i++) ctx.lineTo(cornerPoints[i].x, cornerPoints[i].y);
       ctx.closePath();
       ctx.stroke();
-
-      // Draw key divisions on the quad edges (approx)
-      const k = Math.max(2, Math.min(24, +keysEl.value|0));
-      // Interpolate along top and bottom edges (TL->TR and BL->BR)
-      const TL=calibPoints[0], TR=calibPoints[1], BR=calibPoints[2], BL=calibPoints[3];
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = 'rgba(122,162,255,0.7)';
-      for (let i=1;i<k;i++){
-        const t=i/k;
-        const top={x:TL.x+(TR.x-TL.x)*t, y:TL.y+(TR.y-TL.y)*t};
-        const bot={x:BL.x+(BR.x-BL.x)*t, y:BL.y+(BR.y-BL.y)*t};
-        ctx.beginPath();
-        ctx.moveTo(top.x, top.y);
-        ctx.lineTo(bot.x, bot.y);
-        ctx.stroke();
-      }
     }
     ctx.restore();
   }
 
   // ---------- MAIN LOOP ----------
+  let prevWarp = null;
+
   function tick() {
     if (!running) return;
 
-    // Draw video frame
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    drawCornerOverlay();
 
-    drawCalibOverlay();
+    if (cornerPoints.length === 4) {
+      const currWarp = warpQuadToRect(ctx, cornerPoints);
 
-    // If calibrated, warp and detect
-    if (calibPoints.length === 4) {
-      const currWarp = warpQuadToRect(ctx, calibPoints);
+      if (prevWarp && (mode === 'notes' || mode === 'play')) {
+        const built = buildKeys();
+        keys = built.keys; // keep in sync if user changes range mid-run
+        const whiteCount = built.whiteCount;
 
-      if (prevWarp) {
-        const k = Math.max(2, Math.min(24, +keysEl.value|0));
-        const baseMidi = Math.max(0, Math.min(127, +baseMidiEl.value|0));
-        const thr = +thresholdEl.value;
-        const debounceMs = Math.max(30, +debounceEl.value|0);
         const vel = +velocityEl.value;
         const gateMs = Math.max(20, +gateEl.value|0);
+        const debounceMs = Math.max(30, +debounceEl.value|0);
+        const sens = +sensitivityEl.value;
 
-        const sliceW = Math.floor(warpW / k);
+        if (mode === 'notes') {
+          const k = keys[currentKeyIndex];
+          const reg = getKeyRegionPx(k, whiteCount);
+          const score = motionScore(currWarp, prevWarp, reg.x0, reg.x1, reg.y0, reg.y1);
 
-        // Find keys that exceed threshold
-        for (let i = 0; i < k; i++) {
-          const x0 = i * sliceW;
-          const x1 = (i === k - 1) ? warpW : (i + 1) * sliceW;
-          const score = motionScore(currWarp, prevWarp, x0, x1);
+          const t = performance.now();
+          const elapsed = t - noteCaptureStart;
 
+          // baseline during first BASELINE_MS
+          if (elapsed < BASELINE_MS) {
+            baselineAccum += score;
+            baselineCount++;
+          } else {
+            peakDuringCapture = Math.max(peakDuringCapture, score);
+          }
+
+          // If the user clearly hit it, you can auto-advance early
+          // (peak crosses a dynamic level)
+          if (elapsed > 250 && peakDuringCapture > 28) {
+            finishCurrentKeyCapture();
+          } else if (elapsed >= NOTE_CAPTURE_MS) {
+            finishCurrentKeyCapture();
+          }
+
+        } else if (mode === 'play') {
+          // check all keys each frame
           const nowMs = performance.now();
-          const canHit = (nowMs - lastHitTimes[i]) > debounceMs;
+          for (let i = 0; i < keys.length; i++) {
+            const k = keys[i];
+            const reg = getKeyRegionPx(k, whiteCount);
+            const score = motionScore(currWarp, prevWarp, reg.x0, reg.x1, reg.y0, reg.y1);
 
-          if (score > thr && canHit) {
-            lastHitTimes[i] = nowMs;
-            const midi = Math.min(127, baseMidi + i);
-            playNote(midi, vel, gateMs);
-            log(`Key ${i+1}/${k} hit (score ${score.toFixed(1)}) -> MIDI ${midi}`);
+            const thr = (keyThresholds[i] || 22) * sens;
+            const canHit = (nowMs - lastHitTimes[k.midi]) > debounceMs;
+
+            if (score > thr && canHit) {
+              lastHitTimes[k.midi] = nowMs;
+              playNote(k.midi, vel, gateMs);
+              log(`Hit ${k.name} (${k.isBlack ? 'top' : 'bottom'}) score=${score.toFixed(1)} thr=${thr.toFixed(1)}`);
+            }
           }
         }
       }
+
       prevWarp = currWarp;
     }
 
@@ -442,22 +752,18 @@
   startBtn.addEventListener('click', async () => {
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
+        video: { facingMode:'environment', width:{ideal:1280}, height:{ideal:720} },
         audio: false
       });
       video.srcObject = stream;
       await video.play();
+
       running = true;
       setStatus('running');
-      log('Camera started. Click “Calibrate”.');
-
-      // Kick audio context on first user gesture
+      log('Camera started.');
       ensureAudio();
 
+      if (mode === 'idle') setOverlay();
       requestAnimationFrame(tick);
     } catch (err) {
       console.error(err);
@@ -465,6 +771,10 @@
       setStatus('error');
     }
   });
+
+  // ---------- RESET / INIT ----------
+  resetAll();
+  setOverlay();
 
 })();
 </script>
