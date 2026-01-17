@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Webcam Percussion Keyboard (Blanket + Tape)</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#0b0d12; color:#e8e8e8; }
+    header { padding: 14px 16px; border-bottom: 1px solid #222; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    header h1 { font-size: 16px; margin: 0; font-weight: 650; }
+    .wrap { display:grid; grid-template-columns: 1.3fr 0.7fr; gap: 12px; padding: 12px; }
+    .panel { background:#111522; border:1px solid #1f2536; border-radius:12px; overflow:hidden; }
+    .panel .hd { padding:10px 12px; border-bottom:1px solid #1f2536; font-weight:650; font-size:13px; color:#cfd6ff; }
+    .panel .bd { padding:12px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    label { font-size:12px; color:#c9c9c9; display:flex; gap:8px; align-items:center; }
+    input[type="range"] { width: 200px; }
+    input[type="number"] { width:80px; padding:6px 8px; border-radius:10px; border:1px solid #2a3350; background:#0c1020; color:#e8e8e8;}
+    button {
+      padding:10px 12px; border-radius:12px; border:1px solid #2a3350; background:#141a2d; color:#e8e8e8;
+      cursor:pointer; font-weight:650;
+    }
+    button:hover { background:#182041; }
+    button.danger { border-color:#5a2a2a; background:#2a1414; }
+    button.danger:hover { background:#3a1818; }
+
+    .stage { position: relative; background:#000; }
+    canvas { width:100%; height:auto; display:block; background:#000; }
+    .hint { font-size:12px; line-height:1.35; color:#b6b6b6; }
+    .pill { display:inline-block; padding:2px 8px; border:1px solid #2a3350; border-radius:999px; font-size:12px; color:#cfd6ff; }
+    .grid { display:grid; gap:10px; }
+    .klog { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px; max-height:200px; overflow:auto; padding:10px; background:#0a0e1a; border:1px solid #1f2536; border-radius:12px; }
+    .small { font-size:12px; color:#bdbdbd; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Webcam Percussion Keyboard (Blanket + Tape)</h1>
+  <span class="pill" id="statusPill">idle</span>
+</header>
+
+<div class="wrap">
+  <div class="panel stage">
+    <canvas id="view" width="960" height="540"></canvas>
+  </div>
+
+  <div class="panel">
+    <div class="hd">Controls</div>
+    <div class="bd grid">
+      <div class="row">
+        <button id="startBtn">Start Camera</button>
+        <button id="calibBtn">Calibrate (4 clicks)</button>
+        <button id="clearBtn" class="danger">Clear Calib</button>
+      </div>
+
+      <div class="row">
+        <label>Keys
+          <input id="keys" type="number" min="2" max="24" value="8" />
+        </label>
+        <label>Base MIDI
+          <input id="baseMidi" type="number" min="0" max="127" value="60" />
+        </label>
+      </div>
+
+      <div class="row">
+        <label>Motion threshold
+          <input id="threshold" type="range" min="5" max="80" value="22" />
+          <span id="thresholdVal" class="small">22</span>
+        </label>
+      </div>
+
+      <div class="row">
+        <label>Debounce (ms)
+          <input id="debounce" type="number" min="30" max="1000" value="160" />
+        </label>
+        <label>Velocity
+          <input id="velocity" type="range" min="0" max="1" step="0.01" value="0.8" />
+          <span id="velVal" class="small">0.80</span>
+        </label>
+      </div>
+
+      <div class="row">
+        <label>Gate (ms)
+          <input id="gate" type="number" min="20" max="2000" value="140" />
+        </label>
+      </div>
+
+      <div class="hint">
+        <b>Setup tips:</b><br/>
+        • Put the camera above, angled down. Keep the blanket area well-lit.<br/>
+        • Calibrate by clicking the 4 corners of your taped “keyboard”.<br/>
+        • Motion threshold: raise it if it triggers randomly; lower it if misses hits.<br/>
+        • Works best when your sticks/hands are the moving thing.
+      </div>
+
+      <div>
+        <div class="hd" style="border:0;padding:0;margin:0 0 8px 0;">Event log</div>
+        <div class="klog" id="log"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- DOM ----------
+  const canvas = document.getElementById('view');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  const statusPill = document.getElementById('statusPill');
+  const startBtn = document.getElementById('startBtn');
+  const calibBtn = document.getElementById('calibBtn');
+  const clearBtn = document.getElementById('clearBtn');
+
+  const keysEl = document.getElementById('keys');
+  const baseMidiEl = document.getElementById('baseMidi');
+  const thresholdEl = document.getElementById('threshold');
+  const thresholdVal = document.getElementById('thresholdVal');
+  const debounceEl = document.getElementById('debounce');
+  const velocityEl = document.getElementById('velocity');
+  const velVal = document.getElementById('velVal');
+  const gateEl = document.getElementById('gate');
+  const logEl = document.getElementById('log');
+
+  thresholdEl.addEventListener('input', () => thresholdVal.textContent = thresholdEl.value);
+  velocityEl.addEventListener('input', () => velVal.textContent = (+velocityEl.value).toFixed(2));
+
+  function log(msg) {
+    const t = new Date().toLocaleTimeString();
+    logEl.textContent = `[${t}] ${msg}\n` + logEl.textContent;
+  }
+
+  function setStatus(s) { statusPill.textContent = s; }
+
+  // ---------- VIDEO ----------
+  const video = document.createElement('video');
+  video.playsInline = true;
+  video.muted = true;
+
+  let stream = null;
+  let running = false;
+
+  // ---------- CALIBRATION (4 points) ----------
+  // Points in canvas coords: [top-left, top-right, bottom-right, bottom-left]
+  let calibPoints = [];
+  let calibrating = false;
+
+  calibBtn.addEventListener('click', () => {
+    if (!running) return log('Start camera first.');
+    calibPoints = [];
+    calibrating = true;
+    log('Calibration: click 4 corners (TL, TR, BR, BL).');
+    setStatus('calibrating');
+  });
+
+  clearBtn.addEventListener('click', () => {
+    calibPoints = [];
+    calibrating = false;
+    log('Calibration cleared.');
+    setStatus(running ? 'running' : 'idle');
+  });
+
+  canvas.addEventListener('click', (e) => {
+    if (!calibrating) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    calibPoints.push({x, y});
+    log(`Point ${calibPoints.length}: (${x.toFixed(0)}, ${y.toFixed(0)})`);
+    if (calibPoints.length === 4) {
+      calibrating = false;
+      log('Calibration complete.');
+      setStatus('running');
+      // Reset motion history when we calibrate
+      prevWarp = null;
+      lastHitTimes.fill(0);
+    }
+  });
+
+  // ---------- AUDIO (simple synth) ----------
+  let audioCtx = null;
+
+  function midiToFreq(m) {
+    return 440 * Math.pow(2, (m - 69) / 12);
+  }
+
+  function ensureAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  function playNote(midi, vel=0.8, gateMs=140) {
+    ensureAudio();
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    // "Percussy" tone: triangle with quick decay
+    osc.type = 'triangle';
+    osc.frequency.value = midiToFreq(midi);
+
+    const a = 0.001;
+    const d = gateMs / 1000;
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, vel), now + a);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + Math.max(a + 0.01, d));
+
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + d + 0.05);
+  }
+
+  // ---------- PERSPECTIVE WARP ----------
+  // We map 4-point quad -> rectangle (warpW x warpH) using a homography.
+  // Lightweight implementation (no libs).
+  const warpW = 320, warpH = 180;
+  const warpCanvas = document.createElement('canvas');
+  warpCanvas.width = warpW; warpCanvas.height = warpH;
+  const wctx = warpCanvas.getContext('2d', { willReadFrequently: true });
+
+  function solveHomography(src, dst) {
+    // src, dst: arrays of 4 points {x,y} in order TL,TR,BR,BL
+    // Returns 3x3 homography H mapping src -> dst.
+    // We solve Ah = b (8x8) for h (8 unknowns), set h33 = 1.
+    const A = [];
+    const b = [];
+    for (let i = 0; i < 4; i++) {
+      const {x, y} = src[i];
+      const {x: u, y: v} = dst[i];
+      A.push([x, y, 1, 0, 0, 0, -u*x, -u*y]); b.push(u);
+      A.push([0, 0, 0, x, y, 1, -v*x, -v*y]); b.push(v);
+    }
+    // Gaussian elimination
+    const n = 8;
+    for (let i = 0; i < n; i++) {
+      // pivot
+      let maxRow = i;
+      for (let r = i + 1; r < n; r++) {
+        if (Math.abs(A[r][i]) > Math.abs(A[maxRow][i])) maxRow = r;
+      }
+      [A[i], A[maxRow]] = [A[maxRow], A[i]];
+      [b[i], b[maxRow]] = [b[maxRow], b[i]];
+
+      const piv = A[i][i] || 1e-12;
+      for (let c = i; c < n; c++) A[i][c] /= piv;
+      b[i] /= piv;
+
+      for (let r = 0; r < n; r++) {
+        if (r === i) continue;
+        const f = A[r][i];
+        for (let c = i; c < n; c++) A[r][c] -= f * A[i][c];
+        b[r] -= f * b[i];
+      }
+    }
+    const h = b; // 8 values
+    return [
+      [h[0], h[1], h[2]],
+      [h[3], h[4], h[5]],
+      [h[6], h[7], 1]
+    ];
+  }
+
+  function invert3x3(m) {
+    const a=m[0][0], b=m[0][1], c=m[0][2];
+    const d=m[1][0], e=m[1][1], f=m[1][2];
+    const g=m[2][0], h=m[2][1], i=m[2][2];
+    const A =  (e*i - f*h);
+    const B = -(d*i - f*g);
+    const C =  (d*h - e*g);
+    const D = -(b*i - c*h);
+    const E =  (a*i - c*g);
+    const F = -(a*h - b*g);
+    const G =  (b*f - c*e);
+    const H = -(a*f - c*d);
+    const I =  (a*e - b*d);
+    const det = a*A + b*B + c*C;
+    const invDet = 1 / (det || 1e-12);
+    return [
+      [A*invDet, D*invDet, G*invDet],
+      [B*invDet, E*invDet, H*invDet],
+      [C*invDet, F*invDet, I*invDet]
+    ];
+  }
+
+  function applyH(H, x, y) {
+    const u = H[0][0]*x + H[0][1]*y + H[0][2];
+    const v = H[1][0]*x + H[1][1]*y + H[1][2];
+    const w = H[2][0]*x + H[2][1]*y + H[2][2];
+    return { x: u / w, y: v / w };
+  }
+
+  function warpQuadToRect(frameCtx, quad) {
+    // Build H that maps src quad -> dst rectangle coords
+    const dst = [
+      {x:0, y:0},
+      {x:warpW-1, y:0},
+      {x:warpW-1, y:warpH-1},
+      {x:0, y:warpH-1},
+    ];
+    const H = solveHomography(quad, dst);
+    const Hinv = invert3x3(H); // map dst -> src for sampling
+
+    // sample each pixel in rect from source
+    const srcImg = frameCtx.getImageData(0, 0, canvas.width, canvas.height);
+    const sdata = srcImg.data;
+
+    const out = wctx.createImageData(warpW, warpH);
+    const odata = out.data;
+
+    for (let y = 0; y < warpH; y++) {
+      for (let x = 0; x < warpW; x++) {
+        const p = applyH(Hinv, x, y);
+        const sx = Math.max(0, Math.min(canvas.width - 1, p.x));
+        const sy = Math.max(0, Math.min(canvas.height - 1, p.y));
+        const ix = (Math.floor(sy) * canvas.width + Math.floor(sx)) * 4;
+        const ox = (y * warpW + x) * 4;
+        odata[ox]   = sdata[ix];
+        odata[ox+1] = sdata[ix+1];
+        odata[ox+2] = sdata[ix+2];
+        odata[ox+3] = 255;
+      }
+    }
+    wctx.putImageData(out, 0, 0);
+    return out;
+  }
+
+  // ---------- MOTION DETECTION ----------
+  let prevWarp = null;
+  let lastHitTimes = new Array(24).fill(0);
+
+  function motionScore(curr, prev, x0, x1) {
+    // Sum absolute luminance difference in a vertical slice [x0,x1)
+    const cd = curr.data, pd = prev.data;
+    let sum = 0;
+    const w = warpW, h = warpH;
+    for (let y = 0; y < h; y++) {
+      const row = y * w;
+      for (let x = x0; x < x1; x++) {
+        const idx = (row + x) * 4;
+        const cR = cd[idx], cG = cd[idx+1], cB = cd[idx+2];
+        const pR = pd[idx], pG = pd[idx+1], pB = pd[idx+2];
+        const cY = (cR*0.2126 + cG*0.7152 + cB*0.0722);
+        const pY = (pR*0.2126 + pG*0.7152 + pB*0.0722);
+        sum += Math.abs(cY - pY);
+      }
+    }
+    // normalize
+    const area = (x1 - x0) * h;
+    return sum / Math.max(1, area);
+  }
+
+  // ---------- DRAW HELPERS ----------
+  function drawCalibOverlay() {
+    if (calibPoints.length === 0) return;
+    ctx.save();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#7aa2ff';
+    ctx.fillStyle = '#7aa2ff';
+
+    for (let i = 0; i < calibPoints.length; i++) {
+      const p = calibPoints[i];
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 6, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillText(String(i+1), p.x + 8, p.y - 8);
+    }
+    if (calibPoints.length === 4) {
+      ctx.beginPath();
+      ctx.moveTo(calibPoints[0].x, calibPoints[0].y);
+      for (let i=1;i<4;i++) ctx.lineTo(calibPoints[i].x, calibPoints[i].y);
+      ctx.closePath();
+      ctx.stroke();
+
+      // Draw key divisions on the quad edges (approx)
+      const k = Math.max(2, Math.min(24, +keysEl.value|0));
+      // Interpolate along top and bottom edges (TL->TR and BL->BR)
+      const TL=calibPoints[0], TR=calibPoints[1], BR=calibPoints[2], BL=calibPoints[3];
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(122,162,255,0.7)';
+      for (let i=1;i<k;i++){
+        const t=i/k;
+        const top={x:TL.x+(TR.x-TL.x)*t, y:TL.y+(TR.y-TL.y)*t};
+        const bot={x:BL.x+(BR.x-BL.x)*t, y:BL.y+(BR.y-BL.y)*t};
+        ctx.beginPath();
+        ctx.moveTo(top.x, top.y);
+        ctx.lineTo(bot.x, bot.y);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  // ---------- MAIN LOOP ----------
+  function tick() {
+    if (!running) return;
+
+    // Draw video frame
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    drawCalibOverlay();
+
+    // If calibrated, warp and detect
+    if (calibPoints.length === 4) {
+      const currWarp = warpQuadToRect(ctx, calibPoints);
+
+      if (prevWarp) {
+        const k = Math.max(2, Math.min(24, +keysEl.value|0));
+        const baseMidi = Math.max(0, Math.min(127, +baseMidiEl.value|0));
+        const thr = +thresholdEl.value;
+        const debounceMs = Math.max(30, +debounceEl.value|0);
+        const vel = +velocityEl.value;
+        const gateMs = Math.max(20, +gateEl.value|0);
+
+        const sliceW = Math.floor(warpW / k);
+
+        // Find keys that exceed threshold
+        for (let i = 0; i < k; i++) {
+          const x0 = i * sliceW;
+          const x1 = (i === k - 1) ? warpW : (i + 1) * sliceW;
+          const score = motionScore(currWarp, prevWarp, x0, x1);
+
+          const nowMs = performance.now();
+          const canHit = (nowMs - lastHitTimes[i]) > debounceMs;
+
+          if (score > thr && canHit) {
+            lastHitTimes[i] = nowMs;
+            const midi = Math.min(127, baseMidi + i);
+            playNote(midi, vel, gateMs);
+            log(`Key ${i+1}/${k} hit (score ${score.toFixed(1)}) -> MIDI ${midi}`);
+          }
+        }
+      }
+      prevWarp = currWarp;
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  // ---------- START CAMERA ----------
+  startBtn.addEventListener('click', async () => {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+      video.srcObject = stream;
+      await video.play();
+      running = true;
+      setStatus('running');
+      log('Camera started. Click “Calibrate”.');
+
+      // Kick audio context on first user gesture
+      ensureAudio();
+
+      requestAnimationFrame(tick);
+    } catch (err) {
+      console.error(err);
+      log('Camera error: ' + err.message);
+      setStatus('error');
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
